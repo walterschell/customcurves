@@ -125,6 +125,10 @@ func modSHA256(bitSize uint, msgChunks ...[]byte) *big.Int {
 // Secret key for using Schnorr signatures
 type SecretKey weierstrass.Scalar
 
+func (sk *SecretKey) Equals(other *SecretKey) bool {
+	return sk == other || (*weierstrass.Scalar)(sk).Equals((*weierstrass.Scalar)(other))
+}
+
 func (sk *SecretKey) K() *big.Int {
 	scalar := (*weierstrass.Scalar)(sk)
 	return scalar.K()
@@ -155,6 +159,10 @@ func UnmarshalSecretKey(c *weierstrass.Curve, data []byte) (*SecretKey, error) {
 
 // Public key for using Schnorr signatures
 type PublicKey weierstrass.Point
+
+func (pk *PublicKey) Equals(other *PublicKey) bool {
+	return pk == other || (*weierstrass.Point)(pk).Equals((*weierstrass.Point)(other))
+}
 
 func (pk *PublicKey) Curve() *weierstrass.Curve {
 	point := (*weierstrass.Point)(pk)

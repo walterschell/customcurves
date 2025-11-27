@@ -163,3 +163,68 @@ func TestEndToEndSigning(t *testing.T) {
 	}
 	t.Logf("Signature verified correctly")
 }
+
+
+func TestSecretKeyEquality(t *testing.T) {
+	curve := P256Curve()
+	_, skey1, err := NewKeypair(curve)
+	if err != nil {
+		t.Fatalf("Could not generate keypair")
+	}
+	_, skey2, err := NewKeypair(curve)
+	if err != nil {
+		t.Fatalf("Could not generate keypair")
+	}
+	skey3 := skey1
+
+	if !skey1.Equals(skey3) {
+		t.Fatalf("Expected skey1 to equal skey3")
+	}
+	if skey1.Equals(skey2) {
+		t.Fatalf("Expected skey1 to not equal skey2")
+	}
+
+	serializedKye1, err := skey1.MarshalBinary()
+	if err != nil {
+		t.Fatalf("Could not serialize skey1")
+	}
+	deserializedKey1, err := UnmarshalSecretKey(curve, serializedKye1)
+	if err != nil {
+		t.Fatalf("Could not deserialize skey1")
+	}
+	if !skey1.Equals(deserializedKey1) {
+		t.Fatalf("Expected skey1 to equal deserializedKey1")
+	}
+}
+
+func TestPublicKeyEquality(t *testing.T) {
+	curve := P256Curve()
+	pkey1, _, err := NewKeypair(curve)
+	if err != nil {
+		t.Fatalf("Could not generate keypair")
+	}
+	pkey2, _, err := NewKeypair(curve)
+	if err != nil {
+		t.Fatalf("Could not generate keypair")
+	}
+	pkey3 := pkey1
+
+	if !pkey1.Equals(pkey3) {
+		t.Fatalf("Expected pkey1 to equal pkey3")
+	}
+	if pkey1.Equals(pkey2) {
+		t.Fatalf("Expected pkey1 to not equal pkey2")
+	}
+
+	serializedKey1, err := pkey1.MarshalBinary()
+	if err != nil {
+		t.Fatalf("Could not serialize pkey1")
+	}
+	deserializedKey1, err := UnmarshalPublicKey(curve, serializedKey1)
+	if err != nil {
+		t.Fatalf("Could not deserialize pkey1")
+	}
+	if !pkey1.Equals(deserializedKey1) {
+		t.Fatalf("Expected pkey1 to equal deserializedKey1")
+	}
+}
