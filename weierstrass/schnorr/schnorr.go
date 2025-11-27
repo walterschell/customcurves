@@ -141,6 +141,10 @@ func (sk *SecretKey) PublicKey() *PublicKey {
 	return (*PublicKey)(point)
 }
 
+func (sk *SecretKey) MarshalBinary() ([]byte, error) {
+	return (*weierstrass.Scalar)(sk).MarshalBinary()
+}
+
 func UnmarshalSecretKey(c *weierstrass.Curve, data []byte) (*SecretKey, error) {
 	scalar, err := c.UnmarshalScalar(data)
 	if err != nil {
@@ -163,6 +167,11 @@ func (pk *PublicKey) X() *big.Int {
 func (pk *PublicKey) Y() *big.Int {
 	point := (*weierstrass.Point)(pk)
 	return point.Y()
+}
+
+func (pk *PublicKey) MarshalBinary() ([]byte, error) {
+	point := (*weierstrass.Point)(pk)
+	return point.MarshalBinary()
 }
 
 // Unmarshals a public key
