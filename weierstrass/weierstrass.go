@@ -532,6 +532,10 @@ type Scalar struct {
 	curve *Curve
 }
 
+func (k *Scalar) String() string {
+	return fmt.Sprintf("[%s] Scalar(%s)", k.curve.params.name, k.k.String())
+}
+
 // Compares two secret keys
 func (lhs *Scalar) Equals(rhs *Scalar) bool {
 	return lhs == rhs || (lhs.curve.Equal(rhs.curve) &&
