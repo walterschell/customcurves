@@ -343,7 +343,7 @@ func (p *Point) Equals(other *Point) bool {
 	if p == other {
 		return true
 	}
-	if p.curve != other.curve {
+	if !p.curve.Equal(other.curve) {
 		return false
 	}
 	if p.IsInfinity() && other.IsInfinity() {
