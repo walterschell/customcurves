@@ -327,8 +327,10 @@ func NewCurveBytes(serializedParams []byte) (*Curve, error) {
 
 // Point on a Curve
 type Point struct {
-	x     *big.Int
-	y     *big.Int
+	xProjected *big.Int
+	yProjected *big.Int
+	zProjected *big.Int
+
 	curve *Curve
 }
 
@@ -336,23 +338,11 @@ func (p *Point) String() string {
 	if p.IsInfinity() {
 		return fmt.Sprintf("[%v](Infinity)", p.curve.params.name)
 	}
-	return fmt.Sprintf("[%v](0x%x, 0x%x)", p.curve.params.name, p.x, p.y)
+	return fmt.Sprintf("[%v](0x%x, 0x%x)", p.curve.params.name, p.X(), p.Y())
 }
 
 func (p *Point) Equals(other *Point) bool {
-	if p == other {
-		return true
-	}
-	if !p.curve.Equal(other.curve) {
-		return false
-	}
-	if p.IsInfinity() && other.IsInfinity() {
-		return true
-	}
-	if p.IsInfinity() || other.IsInfinity() {
-		return false
-	}
-	return p.x.Cmp(other.x) == 0 && p.y.Cmp(other.y) == 0
+	return p.Equal(other)
 }
 
 func (p *Point) Curve() *Curve {
@@ -361,12 +351,24 @@ func (p *Point) Curve() *Curve {
 
 // Returns X coordinate of the point.
 func (p *Point) X() *big.Int {
-	return new(big.Int).Set(p.x)
+	zInv := new(big.Int).ModInverse(p.zProjected, p.curve.params.p)
+	if zInv == nil {
+		panic("Point at infinity has no X coordinate")
+	}
+	x := new(big.Int).Mul(p.xProjected, zInv)
+	x.Mod(x, p.curve.params.p)
+	return x
 }
 
 // Returns Y coordinate of the point.
 func (p *Point) Y() *big.Int {
-	return new(big.Int).Set(p.y)
+	zInv := new(big.Int).ModInverse(p.zProjected, p.curve.params.p)
+	if zInv == nil {
+		panic("Point at infinity has no Y coordinate")
+	}
+	y := new(big.Int).Mul(p.yProjected, zInv)
+	y.Mod(y, p.curve.params.p)
+	return y
 }
 
 // Compares the coordinates and curves of two points
@@ -374,9 +376,24 @@ func (p *Point) Y() *big.Int {
 // x,y coords but that were derived from different curves will
 // not compare equal.
 func (p *Point) Equal(other *Point) bool {
-	return p == other || (p.curve.Equal(other.curve) &&
-		p.x.Cmp(other.x) == 0 &&
-		p.y.Cmp(other.y) == 0)
+	if p == other {
+		return true
+	}
+
+	if p.curve == nil || other.curve == nil {
+		return false
+	}
+
+	if !p.curve.Equal(other.curve) {
+		return false
+	}
+
+	if p.IsInfinity() && other.IsInfinity() {
+		return true
+	}
+
+	return p.X().Cmp(other.X()) == 0 && p.Y().Cmp(other.Y()) == 0
+
 }
 
 // Tests if coordinates for a point are on a given curve
@@ -407,12 +424,16 @@ func (e NotOnCurveError) Error() string {
 
 // If x, y coordinates are on the curve, returns
 // a Point tied to those points
-// do not modify x or y after calling this function
 func (c *Curve) NewPoint(x, y *big.Int) (*Point, error) {
 	if !c.IsOnCurve(x, y) {
 		return nil, NotOnCurveError{}
 	}
-	return &Point{x, y, c}, nil
+	return &Point{
+		xProjected: new(big.Int).Set(x),
+		yProjected: new(big.Int).Set(y),
+		zProjected: big.NewInt(1),
+		curve:      c,
+	}, nil
 }
 
 // If x is on the curve recover one of the two
@@ -454,12 +475,12 @@ func (c *Curve) G() *Point {
 
 // Represents the point at infinity
 func (c *Curve) Infinity() *Point {
-	return &Point{nil, nil, c}
+	return &Point{xProjected: big.NewInt(0), yProjected: big.NewInt(1), zProjected: big.NewInt(0), curve: c}
 }
 
 // Tests if a point is the point at infinity
 func (p *Point) IsInfinity() bool {
-	return p.x == nil && p.y == nil
+	return p.zProjected.Sign() == 0
 }
 
 func (c *Curve) newKeyPair() (*Point, *big.Int, error) {
@@ -478,13 +499,16 @@ func (c *Curve) newKeyPair() (*Point, *big.Int, error) {
 // Marshals a point
 // Parity + X value + curve fingerprint
 func (p *Point) MarshalBinary() ([]byte, error) {
+	x := p.X()
+	y := p.Y()
+
 	buf := new(bytes.Buffer)
-	if p.y.Bit(0) == 1 {
+	if y.Bit(0) == 1 {
 		buf.WriteByte(0x03)
 	} else {
 		buf.WriteByte(0x02)
 	}
-	err := writeBigInt(buf, p.x)
+	err := writeBigInt(buf, x)
 	if err != nil {
 		return nil, err
 	}
@@ -603,7 +627,7 @@ func (p *Point) Add(q *Point) *Point {
 
 	result := completeAddAlgorithm1(p, q)
 	if checkPointsAfterEveryAdd {
-		if !result.IsInfinity() && !result.curve.IsOnCurve(result.x, result.y) {
+		if !result.IsInfinity() && !result.curve.IsOnCurve(result.X(), result.Y()) {
 			fmt.Printf("Result point: %s\n", result.String())
 			panic("Point is not on the curve after complete addition")
 		}
@@ -616,11 +640,14 @@ func (p *Point) Neg() *Point {
 	if p.IsInfinity() {
 		return p
 	}
-	return &Point{
-		x:     new(big.Int).Set(p.x),
-		y:     new(big.Int).Sub(p.curve.params.p, p.y),
-		curve: p.curve,
+	x := new(big.Int).Set(p.X())
+	y := new(big.Int).Neg(p.Y())
+	y.Mod(y, p.curve.params.p)
+	negPoint, err := p.curve.NewPoint(x, y)
+	if err != nil {
+		panic("Negation resulted in invalid point")
 	}
+	return negPoint
 }
 
 // Subtracts one point from another using the additive

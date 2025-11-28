@@ -12,14 +12,11 @@ func modMul(a, b, p *big.Int) *big.Int {
 	return res
 }
 
-
 func modAdd(a, b, p *big.Int) *big.Int {
 	res := new(big.Int).Add(a, b)
 	res.Mod(res, p)
 	return res
 }
-
-
 
 func modSub(a, b, p *big.Int) *big.Int {
 	res := new(big.Int).Sub(a, b)
@@ -169,34 +166,15 @@ func addAlgorithm1(X1, Y1, Z1, X2, Y2, Z2 *big.Int, curveParams *CurveParams) (X
 	return X3, Y3, Z3
 }
 
-func pointToProjective(P *Point) (X, Y, Z *big.Int) {
-	if P.IsInfinity() {
-		return big.NewInt(0), big.NewInt(1), big.NewInt(0)
-	}
-	return new(big.Int).Set(P.X()), new(big.Int).Set(P.Y()), big.NewInt(1)
-}
-
-func projectiveToPoint(X, Y, Z *big.Int, curveParams *CurveParams) *Point {
-	p := curveParams.p
-	if Z.Sign() == 0 {
-		return &Point{curve: &Curve{params: curveParams}}
-	}
-	// Standard projective dehomogenization: x = X / Z, y = Y / Z
-	zInv := new(big.Int).ModInverse(Z, p)
-	if zInv == nil {
-		panic("Z has no modular inverse")
-	}
-	x := modMul(X, zInv, p)
-	y := modMul(Y, zInv, p)
-	return &Point{curve: &Curve{params: curveParams}, x: x, y: y}
-}
-
 func completeAddAlgorithm1(P, Q *Point) *Point {
 
-	X1, Y1, Z1 := pointToProjective(P)
-	X2, Y2, Z2 := pointToProjective(Q)
+	X1, Y1, Z1 := P.xProjected, P.yProjected, P.zProjected
+	X2, Y2, Z2 := Q.xProjected, Q.yProjected, Q.zProjected
 	X3, Y3, Z3 := addAlgorithm1(X1, Y1, Z1, X2, Y2, Z2, P.curve.params)
-	result := projectiveToPoint(X3, Y3, Z3, P.curve.params)
-
-	return result
+	return &Point{
+		curve:      P.curve,
+		xProjected: X3,
+		yProjected: Y3,
+		zProjected: Z3,
+	}
 }
