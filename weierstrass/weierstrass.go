@@ -16,7 +16,6 @@ import (
 )
 
 const checkPointsAfterEveryAdd = true
-const useCompleteAddition = true
 
 var two = big.NewInt(2)
 var three = big.NewInt(3)
@@ -601,88 +600,12 @@ func (c *Curve) NewKeypair() (*Point, *Scalar, error) {
 
 // Adds two points
 func (p *Point) Add(q *Point) *Point {
-	if useCompleteAddition {
-		result := completeAddAlgorithm1(p, q)
-		if checkPointsAfterEveryAdd {
-			if !result.IsInfinity() && !result.curve.IsOnCurve(result.x, result.y) {
-				fmt.Printf("Result point: %s\n", result.String())
-				panic("Point is not on the curve after complete addition")
-			}
-		}
-		return result
-	}
 
+	result := completeAddAlgorithm1(p, q)
 	if checkPointsAfterEveryAdd {
-		if !p.IsInfinity() && !p.curve.IsOnCurve(p.x, p.y) {
-			panic("Point is not on the curve")
-		}
-		if !q.IsInfinity() && !q.curve.IsOnCurve(q.x, q.y) {
-			panic("Point is not on the curve")
-		}
-	}
-	if !p.curve.Equal(q.curve) {
-		panic("Points are not on the same curve")
-	}
-	if p.IsInfinity() {
-		return q
-	}
-	if q.IsInfinity() {
-		return p
-	}
-	shouldDouble := false
-	if p.x.Cmp(q.x) == 0 && p.y.Cmp(q.y) != 0 {
-		return p.curve.Infinity()
-	} else if p.Equal(q) {
-		shouldDouble = true
-	}
-
-	var slope *big.Int
-
-	if shouldDouble {
-
-		// Slope = (3*x^2 + a) / (2*y)
-		numerator := new(big.Int).Mul(three,
-			new(big.Int).Exp(p.x,
-				two,
-				p.curve.params.p))
-		numerator.Add(numerator, p.curve.params.a)
-		numerator.Mod(numerator, p.curve.params.p)
-
-		denominator := new(big.Int).Mul(two, p.y)
-		denominator.Mod(denominator, p.curve.params.p)
-		denominator.ModInverse(denominator, p.curve.params.p)
-
-		slope = new(big.Int).Mul(numerator, denominator)
-		slope.Mod(slope, p.curve.params.p)
-	} else {
-		// Slope = (y2 - y1) / (x2 - x1)
-		numerator := new(big.Int).Sub(q.y, p.y)
-		numerator.Mod(numerator, p.curve.params.p)
-
-		denominator := new(big.Int).Sub(q.x, p.x)
-		denominator.Mod(denominator, p.curve.params.p)
-		denominator.ModInverse(denominator, p.curve.params.p)
-
-		slope = new(big.Int).Mul(numerator, denominator)
-		slope.Mod(slope, p.curve.params.p)
-	}
-
-	// x = slope^2 - x2 - x1
-	x := new(big.Int).Exp(slope, two, p.curve.params.p)
-	x.Sub(x, p.x)
-	x.Sub(x, q.x)
-	x.Mod(x, p.curve.params.p)
-
-	// y = slope*(x1 - x) - y1
-	y := new(big.Int).Sub(p.x, x)
-	y.Mul(y, slope)
-	y.Sub(y, p.y)
-	y.Mod(y, p.curve.params.p)
-
-	result := &Point{x, y, p.curve}
-	if checkPointsAfterEveryAdd {
-		if !result.curve.IsOnCurve(result.x, result.y) {
-			panic(fmt.Sprintf("Point is not on the curve (doubling = %v)", shouldDouble))
+		if !result.IsInfinity() && !result.curve.IsOnCurve(result.x, result.y) {
+			fmt.Printf("Result point: %s\n", result.String())
+			panic("Point is not on the curve after complete addition")
 		}
 	}
 	return result
