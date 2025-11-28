@@ -10,6 +10,7 @@ smallcurve is optimized for use on curves where all of the math is on numbers 64
 
 ## weierstrass
 weierstrass is for manipulating prime order weierstrass curves (e.g. P-256)
+Uses complete addition formula from https://eprint.iacr.org/2015/1060.pdf, but naive double and add for multipication
 
 ## weierstrass/schnorr
 schnorr is for generating and validating schnorr signatures

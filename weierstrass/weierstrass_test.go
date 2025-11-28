@@ -477,7 +477,7 @@ func TestCurveParametersSerialization(t *testing.T) {
 	}
 }
 
-func TestKeyEncoding(t *testing.T) {
+func TestEncoding(t *testing.T) {
 	curve := P256Curve()
 	point, scalar, err := curve.NewKeypair()
 	if err != nil {
@@ -491,8 +491,8 @@ func TestKeyEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not serialize secret key")
 	}
-	t.Logf("Serialized point: %x\n", serializedPoint)
-	t.Logf("Serialized scalar: %x\n", serializedScalar)
+	t.Logf("Serialized point as: %x\n", serializedPoint)
+	t.Logf("Serialized scalar as: %x\n", serializedScalar)
 
 	deserializedPoint, err := curve.UnmarshalPoint(serializedPoint)
 	if err != nil {
@@ -502,15 +502,19 @@ func TestKeyEncoding(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Could not deserialize secret key: %v", err)
 	}
-	t.Logf("Deserialized public key: %v\n", deserializedPoint)
-	t.Logf("Deserialized secret key: %v\n", deserializedScalar)
+	t.Logf("Deserialized point key: %s\n", deserializedPoint)
+	t.Logf("Deserialized scalar key: %s\n", deserializedScalar)
 
 	if !point.Equals((deserializedPoint)) {
-		t.Logf("Deserialized public key does not match original")
+		t.Logf("Expected point key: %s\n", point.String())
+		t.Logf("Actual   point key: %s\n", point.String())
+		t.Logf("Deserialized point key does not match original")
 		t.Fail()
 	}
 	if !scalar.Equals(deserializedScalar) {
-		t.Logf("Deserialized secret key does not match original")
+		t.Logf("Expected scalar: %s\n", scalar)
+		t.Logf("Actual   scalar: %s\n", deserializedScalar)
+		t.Logf("Deserialized scalar does not match original")
 		t.Fail()
 	}
 }
