@@ -16,6 +16,7 @@ import (
 )
 
 const checkPointsAfterEveryAdd = true
+const useCompleteAddition = true
 
 var two = big.NewInt(2)
 var three = big.NewInt(3)
@@ -600,6 +601,17 @@ func (c *Curve) NewKeypair() (*Point, *Scalar, error) {
 
 // Adds two points
 func (p *Point) Add(q *Point) *Point {
+	if useCompleteAddition {
+		result := completeAddAlgorithm1(p, q)
+		if checkPointsAfterEveryAdd {
+			if !result.IsInfinity() && !result.curve.IsOnCurve(result.x, result.y) {
+				fmt.Printf("Result point: %s\n", result.String())
+				panic("Point is not on the curve after complete addition")
+			}
+		}
+		return result
+	}
+
 	if checkPointsAfterEveryAdd {
 		if !p.IsInfinity() && !p.curve.IsOnCurve(p.x, p.y) {
 			panic("Point is not on the curve")
